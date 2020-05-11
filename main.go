@@ -25,10 +25,11 @@ func Random32(a, b float32) float32 {
 func main() {
 	rand.Seed(1)
 
-	input, output := tf32.NewV(3, 4), tf32.NewV(3, 4)
+	input, output := tf32.NewV(3, 4), tf32.NewV(6, 4)
 	w1, b1 := tf32.NewV(3, 3), tf32.NewV(3)
-	w2, b2 := tf32.NewV(3, 3), tf32.NewV(3)
-	identity := tf32.Identity(3, 3)
+	w2, b2 := tf32.NewV(6, 6), tf32.NewV(6)
+	identity1 := tf32.Identity(3, 3)
+	identity2 := tf32.Identity(6, 6)
 	parameters := []*tf32.V{&w1, &b1, &w2, &b2}
 	for _, p := range parameters {
 		for i := 0; i < cap(p.X); i++ {
@@ -39,10 +40,10 @@ func main() {
 	for _, p := range parameters {
 		deltas = append(deltas, make([]float32, len(p.X)))
 	}
-	l1 := tf32.Sigmoid(tf32.Add(tf32.Mul(w1.Meta(), input.Meta()), b1.Meta()))
-	l2 := tf32.Sigmoid(tf32.Add(tf32.Mul(w2.Meta(), l1), b2.Meta()))
-	regularization1 := tf32.Quadratic(identity.Meta(), tf32.Mul(w1.Meta(), tf32.T(w1.Meta())))
-	regularization2 := tf32.Quadratic(identity.Meta(), tf32.Mul(w2.Meta(), tf32.T(w2.Meta())))
+	l1 := tf32.Everett(tf32.Add(tf32.Mul(w1.Meta(), input.Meta()), b1.Meta()))
+	l2 := tf32.Add(tf32.Mul(w2.Meta(), l1), b2.Meta())
+	regularization1 := tf32.Quadratic(identity1.Meta(), tf32.Mul(w1.Meta(), tf32.T(w1.Meta())))
+	regularization2 := tf32.Quadratic(identity2.Meta(), tf32.Mul(w2.Meta(), tf32.T(w2.Meta())))
 	regularization := tf32.Add(tf32.Sum(regularization1), tf32.Sum(regularization2))
 	cost := tf32.Add(tf32.Avg(tf32.Quadratic(l2, output.Meta())), regularization)
 
@@ -55,6 +56,7 @@ func main() {
 	for _, item := range data {
 		input.X = append(input.X, item[:]...)
 		output.X = append(output.X, item[:]...)
+		output.X = append(output.X, item[:]...)
 	}
 	iterations := 100
 	alpha, eta := float32(.4), float32(.6)
@@ -63,7 +65,8 @@ func main() {
 		for _, p := range parameters {
 			p.Zero()
 		}
-		identity.Zero()
+		identity1.Zero()
+		identity2.Zero()
 
 		total := tf32.Gradient(cost).X[0]
 
@@ -100,14 +103,14 @@ func main() {
 	}
 
 	fmt.Println(w1.X)
-	test := tf32.Sum(tf32.Quadratic(tf32.Mul(w1.Meta(), tf32.T(w1.Meta())), identity.Meta()))
+	test := tf32.Sum(tf32.Quadratic(tf32.Mul(w1.Meta(), tf32.T(w1.Meta())), identity1.Meta()))
 	test(func(a *tf32.V) bool {
 		fmt.Println(a.X)
 		return true
 	})
 
 	fmt.Println(w2.X)
-	test = tf32.Sum(tf32.Quadratic(tf32.Mul(w2.Meta(), tf32.T(w2.Meta())), identity.Meta()))
+	test = tf32.Sum(tf32.Quadratic(tf32.Mul(w2.Meta(), tf32.T(w2.Meta())), identity2.Meta()))
 	test(func(a *tf32.V) bool {
 		fmt.Println(a.X)
 		return true
