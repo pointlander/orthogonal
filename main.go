@@ -138,6 +138,11 @@ func main() {
 		panic(err)
 	}
 
+	input, output = tf32.NewV(3, 1), tf32.NewV(6, 1)
+	input.X = append(input.X, 0, 0, 0)
+	output.X = append(output.X, 0, 0, 0, 0, 0, 0)
+	l1 = tf32.Everett(tf32.Add(tf32.Mul(w1.Meta(), input.Meta()), b1.Meta()))
+	l2 = tf32.Add(tf32.Mul(w2.Meta(), l1), b2.Meta())
 	for i := range data {
 		input.X[0], input.X[1], input.X[2] =
 			data[i][0], data[i][1], data[i][2]
